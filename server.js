@@ -54,10 +54,10 @@ const generateUploadURL = async()=>{
     const imageName = `${nanoid()}-${date.getTime()}.jpeg`;
 
    return await s3.getSignedUrlPromise('putObject',{
-        Bucket:'chidex-blogging-website',
-        key: imageName,
+        Bucket:'blogging',
+        Key: imageName,
         Expires: 1000,
-        contentType:'image/jpeg'
+        ContentType:'image/jpeg'
     })
 
 
@@ -77,16 +77,14 @@ const verifyJWT = (req, res, next) =>{
             if(err) {
                 return res.status(403).json({ error: "Access token is invalid"})
             }
-
             req.user = user.id
             next()
-        } )
+        })
 }
 
 
-
+/**********************data to see in the session******************************************* */
 const formatDatatoSend = (user) => {
-
     const access_token = jwt.sign({ id: user._id }, process.env.SECRET_ACCESS_KEY )
     return{
         access_token,
@@ -110,7 +108,7 @@ const generateUsername = async (email) =>{
 //Upload image route with aws********************************************************************
 
 server.get('/get-upload-url', (req, res)=>{
-    generateUploadURL ().then(url => res.status(200).json({uploadURL: url}))
+    generateUploadURL().then(url => res.status(200).json({uploadURL: url}))
     .catch(err =>{
         console.log(err.message);
         return res.status(500).json({error: err.message})
@@ -159,7 +157,7 @@ server.post("/signup", (req, res)=>{
             .catch(err =>{
 
                 if(err.code == 11000){
-                    return res.status(500).json({"error": "Email Already Exist"})
+                    return res.status(500).json({"error": "Email Already Exists"})
                 }
                 return res.status(500).json({"error": err.message})
             })
@@ -173,7 +171,9 @@ server.post("/signup", (req, res)=>{
 //signin post request------**************************************************************************
 
 server.post("/signin", (req, res)=> {
+
     let { email, password} = req.body;
+    
     User.findOne({ "personal_info.email": email})
     .then((user) => {
 
