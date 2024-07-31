@@ -6,7 +6,7 @@ import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken"
 import cors from 'cors';
 import admin from "firebase-admin";
-import serviceAccountKey from './chidex-blogging-site-firebase-adminsdk-kvvf2-e03dfe2f25.json' assert{type: 'json'}
+import serviceAccountKey from './chidex.json' assert{type: 'json'}
 import {getAuth} from "firebase-admin/auth"
 import aws from "aws-sdk";
 
@@ -118,7 +118,7 @@ server.get('/get-upload-url', (req, res)=>{
 ////signup  post request***********************************************************************
 
 
-server.post("/signup", (req, res)=>{
+server.post("/api/v1/user/signup", (req, res)=>{
   
     let {fullname, email, password} = req.body;
 
@@ -170,7 +170,7 @@ server.post("/signup", (req, res)=>{
 
 //signin post request------**************************************************************************
 
-server.post("/signin", (req, res)=> {
+server.post("/api/v1/user/signin", (req, res)=> {
 
     let { email, password} = req.body;
     
@@ -269,7 +269,7 @@ server.post('/google-auth', async (req, res) =>{
 
 /************************************************route to change password************************************************************************** */
 
-server.post("/change-password", verifyJWT, (req,res)=>{
+server.post("/api/v1/user/change-password", verifyJWT, (req,res)=>{
   let  { currentPassword, newPassword} = req.body;
 
   if(!passwordRegex.test(currentPassword) || !passwordRegex.test(newPassword)){
@@ -295,7 +295,7 @@ server.post("/change-password", verifyJWT, (req,res)=>{
 
                 User.findOneAndUpdate({_id: req.user}, {"personal_info.password": hashed_password})
                 .then((u) =>{
-                    return res.status(500).json({status: 'Password Changed'})
+                    return res.status(200).json({status: 'Password Changed'})
                 })
                 .catch(err =>{
                     return res.status(500).json({error: "Some error occured while saving new password, Please try again later."})
@@ -387,7 +387,7 @@ server.post('/search-blogs', (req, res) =>{
         .populate("author", " personal_info.profile_img personal_info.username personal_info.fullname  -_id")
          .sort({"publishedAt": -1})
          .select("blog_id title des banner activity tags  publishedAt -_id")
-         .skip( (page-1 ) * maxLimit)
+         .skip( (page - 1 ) * maxLimit)
          .limit(maxLimit)
          .then(blogs => {
          return res.status(200).json({ blogs })
@@ -429,9 +429,10 @@ server.post("/search-blogs-count", (req, res) => {
 
 server.post("/search-users",  (req, res)=>{
     let { query }  = req.body;
+
     User.find({"personal_info.username": new RegExp(query, "i")})
     .limit(50)
-    .select("personal_info.fullname personal_info.username personal_info.profile_img - _id")
+    .select("personal_info.fullname personal_info.username personal_info.profile_img -_id")
     .then(users => {
         return res.status(200).json({ users })
     })
@@ -446,7 +447,7 @@ server.post("/get-profile", (req, res) =>{
 
     let { username } = req.body;
     User.findOne({"personal_info.username": username})
-    .select("-personal_info.password - google_auth -updatedAt -blogs")
+    .select("-personal_info.password -google_auth -updatedAt -blogs")
     .then(user => {
         return res.status(200).json(user)
     })
@@ -460,82 +461,9 @@ server.post("/get-profile", (req, res) =>{
 
 
 
-// server.post('/create-blog', verifyJWT, (req, res) =>{
-
-//     let authorId = req.user;
-//     let {title, des, banner, tags, content, draft, id } =req.body;
-
-//     if(!title.length){
-//         return res.status(403).json({error: "You must provide a title"})
-//     }
-
-//     if(!draft){
-
-//         if(!des.length || des.length > 200){
-//             return res.status(403).json({error: "You must provide blog description under 200 characters"})
-//         }
-    
-//         if(!banner.length){
-//             return res.status(403).json({error: "You must provide a blog banner before you can publish the blog"})
-//         }
-    
-//         if(!content.blocks.length){
-//                 return res.status(403).json({error: " There must be some blog content before publish it"})
-//         }
-    
-//         if(!tags.length || tags.length > 10){
-//             return res.status(403).json({error: "Provide some tags in order to publish the blog, Maximum 10 "})
-//         }
-//     }
-
-    
-    
-
-//     tags = tags.map(tag => tag.toLowerCase());
-
-//     let blog_id = id || title.replace(/[^a-zA-Z0-9]+/g, ' ').replace(/\s+/g, "-").trim() + nanoid();
-
-//     if(id){
-        
-//         Blog.findOneAndUpdate({ blog_id }, { title, des, banner, content, tags, draft: draft ? draft : false })
-//         .then(() =>{
-//             return res.status(200).json({ id: blog_id})
-//         })
-//         .catch(err =>{
-//             return res.status(500).json({error: err.message})
-//         })
-
-//     } else{
-
-//         let blog = new  Blog ({
-//             title, des, banner, content, tags, author: authorId, blog_id, draft: Boolean(draft)
-    
-//         })
-    
-    
-//         //*****************************************Send to database********************************************************************************
-    
-//         blog.save().then(blog => {
-    
-//             let  incrementVal = draft ? 0 : 1;
-    
-//             User.findOneAndUpdate({_id: authorId}, { $inc : { "  account_info.total_posts": incrementVal}, $push : { "blogs": blog._id} })
-//             .then(user => {
-//                 return  res.status(200).json({id: blog.blog_id})
-//             })
-    
-//             .catch(err => {
-//                 return res.status(500).json({ error: "Failed to update total posts number"})
-//             })
-//         })
-//         .catch(err =>{
-//             return res.status(500).json({error: err.message })
-//         })
-    
-//     }
-
 //***********************************************upload image route************************************************************************************* */
 server.post("/update-profile-img", verifyJWT , (req,res) =>{
+
     let {url} = req.body;
 
     User.findOneAndUpdate({_id: req.user}, {"personal_info.profile_img": url})
@@ -671,8 +599,8 @@ server.post("/get-blog", (req, res)=>{
     let incrementVal = mode != 'edit' ?  1  : 0 ;
 
     Blog.findOneAndUpdate({ blog_id }, { $inc : { "activity.total_reads": incrementVal } })
-    .populate("author", " personal_info.fullname personal_info.username personal_info.profile_img")
-    .select('title des content banner activity publishedAt blog_id tags ')
+    .populate("author", "personal_info.fullname personal_info.username personal_info.profile_img")
+    .select('title des content banner activity publishedAt blog_id tags')
     .then(blog => {
         User.findOneAndUpdate({"personal_info.username": blog.author.personal_info.username},{
             $inc : { "account_info.total_reads": incrementVal}
@@ -697,10 +625,10 @@ server.post("/get-blog", (req, res)=>{
 /*******************************************************route to send liked blog to the database/****************************** */ 
 
 
-server.post("/like-blog",verifyJWT , (req, res)=>{
+server.post("/like-blog", verifyJWT , (req, res)=>{
 
     let user_id = req.user;
-    let { _id, islikedByUser} =req.body;
+    let { _id, islikedByUser} = req.body;
     let incrementVal = !islikedByUser ? 1 : -1;
     Blog.findOneAndUpdate({ _id }, {$inc: {"activity.total_likes": incrementVal}})
     .then(blog => {
@@ -747,7 +675,7 @@ server.post("/add-comment", verifyJWT, (req, res) =>{
 
     let user_id = req.user;
 
-    let { _id, comment, replying_to, blog_author, notification_id } = req.body;
+    let { _id, comment,  blog_author, replying_to, notification_id } = req.body;
 
     if(!comment.length){
         return res.status(403).json({error: "Write something to leave a comment"});
@@ -756,7 +684,7 @@ server.post("/add-comment", verifyJWT, (req, res) =>{
     //creating comment doc
 
     let commentObj = {
-        blog_id: _id, blog_author,comment, commented_by: user_id,
+        blog_id: _id, blog_author, comment, commented_by: user_id,
     }
 
 
@@ -765,15 +693,15 @@ server.post("/add-comment", verifyJWT, (req, res) =>{
         commentObj.isReply = true;
     }
 
-    new comment(commentObj).save().then(async commentFile =>{
+    new Comment(commentObj).save().then(async commentFile =>{
 
         let {comment, commentedAt, children} = commentFile;
 
         Blog.findOneAndUpdate({_id}, { $push: {"comments": commentFile._id}, 
-         $inc:{"activity.total_comments":1 , "activity.total_parent_comments": replying_to ? 0 : 1}, })
+         $inc:{"activity.total_comments": 1, "activity.total_parent_comments": replying_to ? 0 : 1}, } )
         .then(blog => { console.log("New comment created") });
 
-        let notificationObj ={
+        let notificationObj = {
             type:  replying_to ? "reply" :'comment',
             blog: _id,
             notification_for: blog_author,
@@ -785,7 +713,7 @@ server.post("/add-comment", verifyJWT, (req, res) =>{
 
             notificationObj.replied_on_comment = replying_to;
 
-            await comment.findOneAndUpdate({ _id: replying_to}, {$push: { children: commentFile._id } } )
+            await Comment.findOneAndUpdate({ _id: replying_to}, {$push: { children: commentFile._id } } )
             .then(replyingTocommentDoc => { notificationObj.notification_for = replyingTocommentDoc.commented_by })
 
             if(notification_id){
@@ -817,6 +745,7 @@ server.post("/get-blog-comments", (req, res) =>{
     .skip(skip)
     .limit(maxLimit)
     .sort({
+        //get the latest comment first (-1)
         'commentedAt': -1
     })
     .then(comment => {
@@ -834,7 +763,7 @@ server.post("/get-replies", (req,res) =>{
     let {_id, skip} = req.body;
     let maxLimit = 5;
 
-    comment.findOne({_id})
+    Comment.findOne({_id})
     .populate({
         path: "children",
         options:{
@@ -845,7 +774,6 @@ server.post("/get-replies", (req,res) =>{
         populate:{
             path: "commented_by",
             select: "personal_info.profile_img personal_info.fullname personal_info.username"
-
         },
         select: "-blog_id -updatedAt"
     })
@@ -871,7 +799,7 @@ const deleteComments =(_id) =>{
         }
         Notification.findOneAndDelete({ comment:_id}).then(notification => console.log("comment notification deleted"))
         Notification.findOneAndUpdate({reply: _id}, {$unset: {reply: 1} }).then(notification => console.log("reply notification deleted"))
-
+//1 means true
         Blog.findOneAndUpdate({ _id: comment.blog_id }, {$pull: {comments: _id}, $inc:{"activity.total_comments": -1} , "activity.total_parent_comments":  comment.parent ? 0 : -1})
         .then(blog => {
             if(comment.children.length){
@@ -893,15 +821,15 @@ server.post("/delete-comment",verifyJWT, (req, res) =>{
         let user_id = req.user;
         let {_id}  = req.body;
 
-        comment.findOne({ _id })
+        Comment.findOne({ _id })
         .then(comment =>{
-            if(user_id == comment.commented_by || user-id == comment.blog_author){
+            if(user_id == comment.commented_by || user_id == comment.blog_author){
 
                 deleteComments(_id)
                     return res.status(200).json({ status: "done"});
 
             }else{
-                return res.status(403).json({error: "You can not delete this comment , because you are not the author"})
+                return res.status(403).json({error: "You can not delete this comment !!!"})
             }
         })
 
@@ -910,7 +838,7 @@ server.post("/delete-comment",verifyJWT, (req, res) =>{
 /**********************************************************notification alert route**************************************************- */
 server.get("/new-notification", verifyJWT, (req, res) =>{
     let user_id = req.user;
-    Notification.exists({ notification_for: user_id, seen:false, user:{$ne:user_id}  })
+    Notification.exists({ notification_for: user_id, seen: false, user: { $ne: user_id }  })
     .then(result => {
         if(result){
             return res.status(200).json({ new_notification_available: true})
@@ -944,7 +872,7 @@ server.post("/notifications", verifyJWT , (req, res) => {
     .skip(skipDocs)
     .limit(maxLimit)
     .populate("blog", "title blog_id")
-    .populate("user", "personal_info.fullname  personal_info.username personal_info.profile_img")
+    .populate("user", "personal_info.fullname personal_info.username personal_info.profile_img")
     .populate("comment", "comment")
     .populate("replied_on_comment", "comment")
     .populate("reply", "comment")
@@ -955,11 +883,7 @@ server.post("/notifications", verifyJWT , (req, res) => {
         Notification.updateMany(findQuery, {seen: true})
         .skip(skipDocs)
         .limit(maxLimit)
-        .then(() => console.log("Notification seen"))
-
-
-
-
+        .then(() => console.log("notification seen"))
         return res.status(200).json({ notifications })
     })
     .catch(err =>{
@@ -973,7 +897,7 @@ server.post("/notifications", verifyJWT , (req, res) => {
 server.post("/all-notifications-count" , verifyJWT, (req,res) => {
                  let user_id = req.user;
                  let { filter }  = req.body;
-                 let  findQuery = {notification_for: user_id, user: {$ne: user_id} }
+                 let findQuery = {notification_for: user_id, user: {$ne: user_id} }
 
                  if(filter != 'all'){
                     findQuery.type = filter;
@@ -991,7 +915,7 @@ server.post("/all-notifications-count" , verifyJWT, (req,res) => {
 })
 /****************************************************route to get save draft and published blog to display on the user dashboard*************************************************************************** */
 
-server.post("/user-written-blogs", verifyJWT,(req,res) => {
+server.post("/user-written-blogs", verifyJWT, (req,res) => {
 
 let user_id = req.user;
 let { page, draft, query, deletedDocCount } = req.body
@@ -1019,8 +943,8 @@ let { page, draft, query, deletedDocCount } = req.body
 /********************************************route for user-written-blogs-count ************************************************************************************* */
 server.post("/user-written-blogs-count", verifyJWT, (req,res) => {
     let user_id = req.user
-    let {  draft, query } = req.body
-    Blog.countDocuments({  author: user_id, draft, title: new RegExp(query, "i") })
+    let {draft, query} = req.body
+    Blog.countDocuments({author: user_id, draft, title: new RegExp(query, "i") })
     .then(count => {
         return res.status(200).json({ totalDocs: count})
     })
@@ -1037,10 +961,10 @@ server.post("/delete-blog", verifyJWT, (req, res) =>{
     let user_id = req.user;
     let { blog_id } = req.body;
 
-    Blog.findOneAndUpdate({ blog_id })
+    Blog.findOneAndDelete({ blog_id })
     .then(blog =>{
         
-        Notification.deleteMany({ blog: blog-id }).then(data => console.log("Notifications Deleted"));
+        Notification.deleteMany({ blog: blog._id }).then(data => console.log("notifications Deleted"));
 
         Comment.deleteMany({ blog_id: blog._id }).then(data => console.log('Comments deleted'));
 
