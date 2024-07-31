@@ -19,7 +19,7 @@ import Blog from "./schema/Blog.js";
 import Notification from "./schema/Notification.js"
 import Comment from "./schema/Comment.js"
 
-
+const allowedOrigin = process.env.ALLOWED_ORIGIN;
 const server = express();
 const PORT= 3000;
 
@@ -33,7 +33,7 @@ let emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/; // regex for e
 let passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/; // regex for password
 
 server.use(express.json());
-server.use(cors());
+server.use(cors({ origin: allowedOrigin }));
 
 mongoose.connect(process.env.DB_LOCATION,{
     autoIndex: true
